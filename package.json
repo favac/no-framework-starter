@@ -6,7 +6,8 @@
   "scripts": {
     "start": "python -m http.server 8000",
     "serve": "npx serve .",
-    "dev": "npx live-server ."
+    "dev": "node server.js",
+    "build": "echo 'No build step required for vanilla JS'"
   },
   "keywords": [
     "javascript",
@@ -19,6 +20,9 @@
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "live-server": "^1.2.2",
+    "ws": "^8.14.2",
+    "chokidar": "^3.5.3",
+    "mime-types": "^2.1.35"
   }
 }

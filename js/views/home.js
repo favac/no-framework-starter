@@ -1,27 +1,71 @@
 import { h, mount } from "../lib/h.js";
+import { createPersistentStore } from "../hmr-store.js";
+
+// Store local para este componente
+const homeStore = createPersistentStore("home", {
+  count: 0,
+  message: "Hello from HMR-enabled app!",
+});
 
 export function renderHome() {
+  const state = homeStore.get();
+
   const content = h("div", { class: "page-content" }, [
-    h("h1", {}, "Welcome to Your App"),
-    h("p", {}, "This is the home page of your no-framework application."),
+    h("h1", {}, "!!!🚀 Welcome to Your App (HMR Enabled)!"),
+    h(
+      "p",
+      {},
+      "Este es un ejemplo con HMR - los cambios se aplican sin perder estado."
+    ),
+
     h("div", { class: "card" }, [
-      h("h2", {}, "Getting Started"),
-      h("p", {}, "Edit this file to customize your home page."),
-      h("ul", {}, [
-        h("li", {}, "Add new routes in app.js"),
-        h("li", {}, "Create new views in the views/ folder"),
-        h("li", {}, "Use the h() function to create DOM elements"),
-        h("li", {}, "Style your app with CSS variables"),
+      h("h2", {}, `Contador: ${state.count}`),
+      h("p", {}, `Mensaje: ${state.message}`),
+      h("div", { class: "button-group" }, [
+        h(
+          "button",
+          {
+            class: "btn btn-primary",
+            onclick: () => homeStore.set((s) => ({ ...s, count: s.count + 1 })),
+          },
+          "Incrementar"
+        ),
+        h(
+          "button",
+          {
+            class: "btn btn-secondary",
+            onclick: () => homeStore.set((s) => ({ ...s, count: s.count - 1 })),
+          },
+          "Decrementar"
+        ),
+        h(
+          "button",
+          {
+            class: "btn btn-accent",
+            onclick: () =>
+              homeStore.set((s) => ({
+                ...s,
+                message: "¡Estado preservado con HMR!",
+              })),
+          },
+          "Cambiar Mensaje"
+        ),
       ]),
     ]),
-    h(
-      "button",
-      {
-        class: "btn btn-primary",
-        onclick: () => alert("Hello from your no-framework app!"),
-      },
-      "Click Me!"
-    ),
+
+    h("div", { class: "card" }, [
+      h("h3", {}, "Características de HMR"),
+      h("ul", {}, [
+        h("li", {}, "✅ Estado preservado al recargar"),
+        h("li", {}, "✅ CSS actualizado al instante"),
+        h("li", {}, "✅ JavaScript recargado sin refresh"),
+        h("li", {}, "✅ Stores persistentes"),
+      ]),
+    ]),
+
+    h("p", { class: "info" }, [
+      "Prueba a editar este archivo y verás los cambios sin perder el estado del contador.",
+    ]),
   ]);
 
   mount(document.getElementById("main-content"), content);

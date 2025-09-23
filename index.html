@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>No-Framework App</title>
     <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/hmr-demo.css" />
   </head>
   <body>
     <div class="app-container">
@@ -15,6 +16,11 @@
           <button class="nav-btn" data-view="about">About</button>
         </nav>
       </header>
+      
+      <!-- Indicador visual de HMR activo -->
+      <div class="hmr-indicator" id="hmr-indicator" style="display: none;">
+        🔥 HMR Activo
+      </div>
 
       <main id="main-content">
         <!-- Content will be loaded dynamically here -->
