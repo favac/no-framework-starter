@@ -9,6 +9,8 @@ A lightweight, vanilla JavaScript framework for building modern web applications
 - 🎯 **Modern JavaScript** - Uses ES6 modules and modern APIs
 - 🧩 **Component-based** - Create reusable UI components with `h()`
 - 🛣️ **Client-side routing** - Simple hash-based routing
+- ⚡ **HMR dev server** - Hot Module Replacement for JS and CSS with state persistence
+- 🧠 **Lazy-loaded views/routes** - Code-splitting with async route helpers
 - 🎨 **CSS Variables** - Modern styling with custom properties
 - 📱 **Responsive** - Mobile-first design approach
 - 🔧 **Event delegation** - Efficient event handling
@@ -17,8 +19,21 @@ A lightweight, vanilla JavaScript framework for building modern web applications
 ## Quick Start
 
 1. **Clone or download** this starter template
-2. **Open `index.html`** in your browser or serve it with a local server
-3. **Start building** your application!
+2. **Install dependencies**
+
+```bash
+npm install
+```
+
+3. **Start the HMR dev server**
+
+```bash
+npm run dev
+```
+
+Server will run at: http://localhost:3000
+
+4. (Optional) **Serve without HMR**
 
 ```bash
 # Serve with Python (if you have it installed)
@@ -34,18 +49,23 @@ npx serve .
 no-framework-starter/
 ├── index.html              # Main HTML file
 ├── css/
-│   └── styles.css         # Styles with CSS variables
+│   ├── styles.css         # Styles with CSS variables
+│   └── hmr-demo.css       # Styles for the HMR demo indicator
 ├── js/
-│   ├── app.js            # Main application entry point
-│   ├── router.js         # Client-side routing
+│   ├── app.js             # Main application entry point (sets up routes + HMR indicator)
+│   ├── router.js          # Client-side routing with lazy loading helpers
+│   ├── hmr-store.js       # Persistent stores for HMR
+│   ├── hmr-ui.js          # Small UI helper to show HMR indicator
 │   ├── lib/
-│   │   └── h.js          # Core framework utilities
+│   │   └── h.js           # Core framework utilities
 │   ├── views/
-│   │   ├── home.js       # Home page view
-│   │   └── about.js      # About page view
+│   │   ├── home.js        # Home page view (uses persistent store)
+│   │   └── about.js       # About page view (uses persistent store)
 │   └── utils/
-│       └── modal.js      # Modal utilities
-└── README.md             # This file
+│       └── modal.js       # Modal utilities
+├── server.js               # Development server with WebSocket-powered HMR
+├── test-hmr.js             # Example script to verify HMR (optional)
+└── README.md               # This file
 ```
 
 ## Core Concepts
@@ -76,17 +96,28 @@ const card = h('div', { class: 'card' }, [
 
 ### Routing
 
-Add new routes by updating the `routes` object in `app.js`:
+Routes are lazy-loaded by default using helpers from `js/router.js` so you only load the code you need when you need it:
 
 ```javascript
-import { renderNewPage } from './views/newpage.js';
+// js/app.js
+import { load /*, createRoutes */ } from './router.js';
 
+// Simple approach using the load() helper
 const routes = {
-    'home': renderHome,
-    'about': renderAbout,
-    'newpage': renderNewPage,  // Add your new route
-    '': renderHome
+  home: load('home'),
+  about: load('about'),
+  '': load('home') // default route
 };
+
+// Advanced: declarative route creation
+// const routes = createRoutes({
+//   home: 'home',
+//   about: 'about',
+//   '': 'home'
+// });
+
+// Make available globally for HMR fallback
+window.routes = routes;
 ```
 
 ### Creating Views
@@ -124,6 +155,20 @@ store.subscribe(state => {
 store.update({ count: store.get().count + 1 });
 ```
 
+For HMR-enabled components, prefer `createPersistentStore()` from `js/hmr-store.js` which preserves state across hot updates:
+
+```javascript
+import { createPersistentStore } from './hmr-store.js';
+
+const store = createPersistentStore('counter', { count: 0 });
+
+store.subscribe(state => {
+  console.log('Count is now:', state.count);
+});
+
+store.set(s => ({ ...s, count: s.count + 1 }));
+```
+
 ### Event Delegation
 
 Efficiently handle events with delegation:
@@ -157,19 +202,85 @@ const modalContent = h('div', {}, [
 
 showModal(modalContent);
 ```
+ 
+## Hot Module Replacement (HMR)
 
-## CSS Variables
+This starter includes a development server with full Hot Module Replacement for JavaScript and CSS.
 
-Customize the look and feel by modifying CSS variables in `styles.css`:
+- JS modules are reloaded without a full page refresh.
+- CSS updates are applied instantly.
+- State persists across updates when using `createPersistentStore()` from `js/hmr-store.js`.
 
-```css
-:root {
-    --primary-color: #4a6fa5;
-    --secondary-color: #6c757d;
-    --success-color: #28a745;
-    --danger-color: #dc3545;
-    /* ... more variables */
+### How to run
+
+```bash
+npm run dev
+```
+
+The server injects the HMR client into `index.html` at runtime and auto-wires view modules that export a function like `renderHome` or `renderAbout`.
+
+You’ll also see a small on-screen indicator when HMR is active. See more details and advanced usage in [HMR-README.md](HMR-README.md).
+
+### Example: persistent state with HMR
+
+```javascript
+// js/views/home.js
+import { h, mount } from '../lib/h.js';
+import { createPersistentStore } from '../hmr-store.js';
+
+const homeStore = createPersistentStore('home', { count: 0 });
+
+export function renderHome() {
+  const state = homeStore.get();
+  const content = h('div', {}, [
+    h('h2', {}, `Counter: ${state.count}`),
+    h('button', { onclick: () => homeStore.set(s => ({ ...s, count: s.count + 1 })) }, 'Increment')
+  ]);
+  mount(document.getElementById('main-content'), content);
 }
+```
+
+No extra HMR code is required in your views—the dev server auto-injects what’s needed to re-render after updates.
+
+> Tip: open the browser console to see detailed HMR logs.
+
+## Lazy Loading (Code-Splitting)
+
+The router provides helpers to lazy-load view modules on demand:
+
+```javascript
+// js/router.js
+export function load(viewName, customPath = null) {
+  const viewPath = customPath || `./views/${viewName}.js`;
+  return createLazyRoute(viewName, viewPath);
+}
+
+export function createLazyRoute(viewName, viewPath, functionName = null) {
+  const renderFunction = functionName || `render${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`;
+  return async () => {
+    const cache = window.moduleCache || new Map();
+    if (!cache.has(viewName)) {
+      const module = await import(viewPath);
+      cache.set(viewName, module[renderFunction]);
+      if (window.moduleCache) window.moduleCache.set(viewName, module[renderFunction]);
+    }
+    return cache.get(viewName)();
+  };
+}
+```
+
+Use it from `js/app.js`:
+
+```javascript
+import { load } from './router.js';
+
+const routes = {
+  home: load('home'),
+  about: load('about'),
+  '': load('home')
+};
+
+window.routes = routes; // also used by HMR fallback
 ```
 
 ## Adding New Features
@@ -190,15 +301,15 @@ export function renderProducts() {
 }
 ```
 
-### 2. Add the Route
+### 2. Add the Route (Lazy-loaded)
 
 ```javascript
 // js/app.js
-import { renderProducts } from './views/products.js';
+import { load } from './router.js';
 
 const routes = {
     // ... existing routes
-    'products': renderProducts
+    products: load('products')
 };
 ```
 
