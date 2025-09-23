@@ -1,4 +1,4 @@
-// Main application module - Compatible con HMR
+// Main application module - Compatible with HMR
 import { initRouter } from "./router.js";
 import { renderHome } from "./views/home.js";
 import { renderAbout } from "./views/about.js";
@@ -13,10 +13,10 @@ const routes = {
   "": renderHome, // Default route
 };
 
-// Hacer routes disponible globalmente para HMR
+// Make routes available globally for HMR
 window.routes = routes;
 
-// Store global de la aplicación
+// Global application store
 export const appStore = createPersistentStore('app', {
   currentView: 'home',
   modalOpen: false,
@@ -25,7 +25,7 @@ export const appStore = createPersistentStore('app', {
 
 // Initialize the application
 function initApp() {
-  console.log('🚀 Inicializando aplicación...');
+  console.log('🚀 Initializing application...');
   
   // Initialize the router
   initRouter(routes);
@@ -57,12 +57,12 @@ function initApp() {
     });
   });
   
-  // Suscribirse a cambios en el store
+  // Subscribe to store changes
   appStore.subscribe(state => {
-    console.log('📊 Estado actualizado:', state);
+    console.log('📊 State updated:', state);
   });
   
-  // Mostrar indicador HMR
+  // Show HMR indicator
   showHMRIndicator();
 }
 

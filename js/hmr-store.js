@@ -1,25 +1,25 @@
-// Sistema de stores para HMR - Compatible con tu helper h()
+// Store system for HMR - Compatible with your h() helper
 
-// Store global para HMR
+// Global store for HMR
 window.stores = window.stores || {};
 
 /**
- * Crea un store reactivo que persiste durante HMR
- * @param {string} name - Nombre único del store
- * @param {*} initialState - Estado inicial
- * @returns {Object} Store con métodos get, set, update, subscribe
+ * Creates a reactive store that persists during HMR
+ * @param {string} name - Unique store name
+ * @param {*} initialState - Initial state
+ * @returns {Object} Store with get, set, update, subscribe methods
  */
 export function createPersistentStore(name, initialState) {
-  // Si ya existe un store con este nombre, usarlo
+  // If a store with this name already exists, use it
   if (window.stores[name]) {
     return window.stores[name];
   }
 
-  // Si hay estado guardado de HMR, usarlo
+  // If there's saved state from HMR, use it
   const savedState = window.__HMR_STATE__?.stores?.get(name);
   const state = savedState !== undefined ? savedState : initialState;
 
-  // Crear store similar al de h.js pero persistente
+  // Create store similar to h.js but persistent
   let currentState = state;
   const listeners = new Set();
 
@@ -40,18 +40,18 @@ export function createPersistentStore(name, initialState) {
     },
     
     subscribe: (fn) => {
-      // Sistema automático de limpieza para HMR
+      // Automatic cleanup system for HMR
       const wrappedFn = (state) => {
         try {
           fn(state);
         } catch (error) {
-          console.warn('Error en suscripción:', error);
+          console.warn('Error in subscription:', error);
         }
       };
       
       listeners.add(wrappedFn);
       
-      // Registrar para limpieza automática en HMR
+      // Register for automatic cleanup in HMR
       if (window.__HMR_CLEANUP__) {
         const unsubscribe = () => listeners.delete(wrappedFn);
         window.__HMR_CLEANUP__.push(unsubscribe);
@@ -61,28 +61,28 @@ export function createPersistentStore(name, initialState) {
       return () => listeners.delete(wrappedFn);
     },
     
-    // Método adicional para limpiar listeners en desarrollo
+    // Additional method to clear listeners in development
     _clearListeners: () => {
       listeners.clear();
     }
   };
 
-  // Guardar en stores globales para HMR
+  // Save in global stores for HMR
   window.stores[name] = store;
   
   return store;
 }
 
 /**
- * Hook para usar con componentes que necesitan re-render en cambios
- * @param {string} storeName - Nombre del store
- * @param {Function} renderFn - Función que renderiza el componente
- * @returns {Object} Store y función forceUpdate
+ * Hook to use with components that need re-render on changes
+ * @param {string} storeName - Store name
+ * @param {Function} renderFn - Function that renders the component
+ * @returns {Object} Store and forceUpdate function
  */
 export function useStore(storeName, renderFn) {
   const store = window.stores[storeName];
   if (!store) {
-    throw new Error(`Store "${storeName}" no encontrado`);
+    throw new Error(`Store "${storeName}" not found`);
   }
 
   let forceUpdate = () => {};
@@ -90,17 +90,17 @@ export function useStore(storeName, renderFn) {
   if (renderFn) {
     forceUpdate = () => {
       const newElement = renderFn(store.get());
-      // Aquí podrías usar tu sistema de mount/update
-      // Esto es un placeholder que se puede adaptar
+      // Here you could use your mount/update system
+      // This is a placeholder that can be adapted
       if (window.__HMR_UPDATE_COMPONENT__) {
         window.__HMR_UPDATE_COMPONENT__(newElement);
       }
     };
     
-    // Suscribirse a cambios
+    // Subscribe to changes
     const unsubscribe = store.subscribe(forceUpdate);
     
-    // Limpiar suscripción cuando el componente se desmonte
+    // Clean up subscription when component unmounts
     if (window.__HMR_CLEANUP__) {
       window.__HMR_CLEANUP__.push(unsubscribe);
     }
@@ -110,7 +110,7 @@ export function useStore(storeName, renderFn) {
 }
 
 /**
- * Sistema simple de componentes con HMR
+ * Simple component system with HMR
  */
 export class HMRComponent {
   constructor(name, renderFn) {
@@ -119,7 +119,7 @@ export class HMRComponent {
     this.element = null;
     this.cleanup = [];
     
-    // Registrar para HMR
+    // Register for HMR
     if (!window.__HMR_COMPONENTS__) {
       window.__HMR_COMPONENTS__ = new Map();
     }
@@ -127,11 +127,11 @@ export class HMRComponent {
   }
   
   render(container, props = {}) {
-    // Limpiar suscripciones anteriores
+    // Clean up previous subscriptions
     this.cleanup.forEach(fn => fn());
     this.cleanup = [];
     
-    // Renderizar
+    // Render
     this.element = this.renderFn(props);
     
     if (container) {
@@ -156,10 +156,10 @@ export class HMRComponent {
   }
 }
 
-// Sistema de actualización de componentes para HMR
+// Component update system for HMR
 window.__HMR_UPDATE_COMPONENT__ = (newElement) => {
-  // Placeholder - se implementará según tu estructura
-  console.log('Componente actualizado:', newElement);
+  // Placeholder - will be implemented according to your structure
+  console.log('Component updated:', newElement);
 };
 
 window.__HMR_CLEANUP__ = [];

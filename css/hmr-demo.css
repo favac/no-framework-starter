@@ -1,4 +1,4 @@
-/* Estilos adicionales para la demo de HMR */
+/* Additional styles for HMR demo */
 
 .button-group {
   display: flex;
@@ -58,7 +58,7 @@
   color: var(--text-color, #333);
 }
 
-/* Indicador visual de HMR activo */
+/* Visual indicator for active HMR */
 .hmr-indicator {
   position: fixed;
   top: 10px;

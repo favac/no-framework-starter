@@ -7,20 +7,20 @@ const mime = require('mime-types');
 
 const PORT = process.env.PORT || 3000;
 
-// Estado del servidor HMR
+// HMR server state
 const clients = new Set();
 const moduleCache = new Map();
 
-// Crear servidor HTTP
+// Create HTTP server
 const server = http.createServer((req, res) => {
-  // Parsear URL para remover query parameters
+  // Parse URL to remove query parameters
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
   const pathname = urlObj.pathname === '/' ? '/index.html' : urlObj.pathname;
   const filePath = path.join(__dirname, pathname);
   
-  console.log(`Solicitando: ${req.url} -> ${pathname} -> ${filePath}`);
+  console.log(`Requesting: ${req.url} -> ${pathname} -> ${filePath}`);
   
-  // Seguridad: no permitir salir del directorio
+  // Security: don't allow directory traversal
   if (!filePath.startsWith(__dirname)) {
     res.statusCode = 403;
     res.end('Forbidden');
@@ -42,12 +42,12 @@ const server = http.createServer((req, res) => {
     const contentType = mime.lookup(filePath) || 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
     
-    // Headers CORS para módulos ES6
+    // CORS headers for ES6 modules
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    // Inyectar cliente HMR en HTML
+    // Inject HMR client in HTML
     if (pathname.endsWith('.html')) {
       const hmrScript = `
         <script>
@@ -57,32 +57,32 @@ const server = http.createServer((req, res) => {
       data = data.toString().replace('</body>', hmrScript + '</body>');
     }
     
-    // Inyectar HMR automático en archivos JS de vistas
+    // Inject automatic HMR in view JS files
     if (pathname.includes('/views/') && pathname.endsWith('.js')) {
       let jsContent = data.toString();
       
-      // Detectar función de render exportada
+      // Detect exported render function
       const renderFunctionMatch = jsContent.match(/export\s+function\s+(render\w+)/);
       if (renderFunctionMatch) {
         const functionName = renderFunctionMatch[1];
         const viewName = pathname.split('/').pop().replace('.js', '');
         
-        // Detectar stores en el archivo
+        // Detect stores in the file
         const storeMatches = jsContent.match(/const\s+(\w*Store)\s*=/g) || [];
         const storeNames = storeMatches.map(match => {
           const storeName = match.match(/const\s+(\w*Store)/)[1];
           return storeName;
         });
         
-        // Inyectar código HMR automático al final del archivo
+        // Inject automatic HMR code at the end of the file
         const hmrCode = `
 
-// 🔥 HMR Auto-injected - Código automático para Hot Module Replacement
+// 🔥 HMR Auto-injected - Automatic code for Hot Module Replacement
 if (typeof window !== "undefined") {
   window.__HMR_VIEWS__ = window.__HMR_VIEWS__ || {};
   window.__HMR_VIEWS__["${viewName}"] = ${functionName};
   
-  // Auto-suscribir stores detectados
+  // Auto-subscribe detected stores
   ${storeNames.map(storeName => `
   if (typeof ${storeName} !== 'undefined') {
     ${storeName}.subscribe(() => ${functionName}());
@@ -97,16 +97,16 @@ if (typeof window !== "undefined") {
   });
 });
 
-// Crear servidor WebSocket
+// Create WebSocket server
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
-  console.log('Cliente HMR conectado');
+  console.log('HMR client connected');
   clients.add(ws);
   
   ws.on('close', () => {
     clients.delete(ws);
-    console.log('Cliente HMR desconectado');
+    console.log('HMR client disconnected');
   });
   
   ws.on('error', (error) => {
@@ -115,7 +115,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Sistema de HMR
+// HMR system
 function broadcast(message) {
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
@@ -124,7 +124,7 @@ function broadcast(message) {
   });
 }
 
-// Monitorear cambios en archivos
+// Monitor file changes
 const watcher = chokidar.watch([
   '**/*.js',
   '**/*.css',
@@ -134,16 +134,16 @@ const watcher = chokidar.watch([
 });
 
 watcher.on('change', (filePath) => {
-  console.log(`Archivo cambiado: ${filePath}`);
+  console.log(`File changed: ${filePath}`);
   
   const ext = path.extname(filePath);
   const relativePath = path.relative(__dirname, filePath);
   const webPath = '/' + relativePath.replace(/\\/g, '/');
   
-  console.log(`Enviando actualización para: ${webPath}`);
+  console.log(`Sending update for: ${webPath}`);
   
   if (ext === '.js') {
-    // Invalidar módulo en caché
+    // Invalidate module from cache
     moduleCache.delete(webPath);
     
     broadcast({
@@ -165,7 +165,7 @@ watcher.on('change', (filePath) => {
   }
 });
 
-// Código del cliente HMR
+// HMR client code
 function getHMRClientCode() {
   return `
 (function() {
@@ -173,20 +173,20 @@ function getHMRClientCode() {
   let ws;
   let reconnectTimer;
   
-  // Estado global para HMR
+  // Global state for HMR
   window.__HMR_STATE__ = window.__HMR_STATE__ || {
     modules: new Map(),
     stores: new Map()
   };
   
-  // Array para funciones de limpieza
+  // Array for cleanup functions
   window.__HMR_CLEANUP__ = window.__HMR_CLEANUP__ || [];
   
   function connect() {
     ws = new WebSocket(WS_URL);
     
     ws.onopen = () => {
-      console.log('🔥 HMR conectado');
+      console.log('🔥 HMR connected');
       clearTimeout(reconnectTimer);
     };
     
@@ -196,7 +196,7 @@ function getHMRClientCode() {
     };
     
     ws.onclose = () => {
-      console.log('🔥 HMR desconectado, reconectando...');
+      console.log('🔥 HMR disconnected, reconnecting...');
       reconnectTimer = setTimeout(connect, 1000);
     };
     
@@ -233,27 +233,27 @@ function getHMRClientCode() {
   
   async function updateModule(moduleId) {
     try {
-      console.log('🔄 Actualizando módulo:', moduleId);
+      console.log('🔄 Updating module:', moduleId);
       
-      // Guardar estado antes de recargar
+      // Save state before reloading
       saveState();
       
-      // Recargar módulo
+      // Reload module
       const moduleUrl = moduleId + '?t=' + Date.now();
       const response = await fetch(moduleUrl);
       const code = await response.text();
       
-      // Ejecutar nuevo código
+      // Execute new code
       executeModule(moduleId, code);
       
-      console.log('✅ Módulo actualizado:', moduleId);
+      console.log('✅ Module updated:', moduleId);
     } catch (error) {
-      console.error('❌ Error actualizando módulo:', error);
+      console.error('❌ Error updating module:', error);
     }
   }
   
   function saveState() {
-    // Guardar estado de stores
+    // Save stores state
     if (window.stores) {
       Object.keys(window.stores).forEach(name => {
         window.__HMR_STATE__.stores.set(name, window.stores[name].get());
@@ -263,34 +263,34 @@ function getHMRClientCode() {
   
   function executeModule(moduleId, code) {
     try {
-      console.log('🔄 Ejecutando limpieza para:', moduleId);
+      console.log('🔄 Executing cleanup for:', moduleId);
       
-      // Ejecutar funciones de limpieza
+      // Execute cleanup functions
       if (window.__HMR_CLEANUP__ && window.__HMR_CLEANUP__.length > 0) {
         window.__HMR_CLEANUP__.forEach(function(cleanup) {
           try {
             cleanup();
           } catch (e) {
-            console.warn('Error en cleanup:', e);
+            console.warn('Error in cleanup:', e);
           }
         });
         window.__HMR_CLEANUP__ = [];
       }
       
-      // Eliminar script anterior si existe
+      // Remove previous script if exists
       const oldScript = document.querySelector('script[data-module="' + moduleId + '"]');
       if (oldScript) oldScript.remove();
       
-      // Crear nuevo script con URL correcta
+      // Create new script with correct URL
       const script = document.createElement('script');
       script.type = 'module';
       script.src = moduleId + '?t=' + Date.now();
       script.setAttribute('data-module', moduleId);
       
-      // Manejar carga exitosa
+      // Handle successful load
       script.onload = function() {
-        console.log('✅ Módulo recargado:', moduleId);
-        // Restaurar estado y re-renderizar después de la carga
+        console.log('✅ Module reloaded:', moduleId);
+        // Restore state and re-render after loading
         setTimeout(function() {
           if (window.__HMR_STATE__ && window.__HMR_STATE__.stores && window.__HMR_STATE__.stores.size > 0) {
             window.__HMR_STATE__.stores.forEach(function(state, name) {
@@ -300,65 +300,65 @@ function getHMRClientCode() {
             });
           }
           
-          // Re-ejecutar la función de render automáticamente
+          // Re-execute render function automatically
           if (moduleId.includes('/views/')) {
             const currentHash = window.location.hash.replace('#', '') || 'home';
             
-            // Intentar múltiples métodos para re-renderizar
+            // Try multiple methods to re-render
             setTimeout(() => {
-              console.log('🔄 Re-renderizando vista:', currentHash);
+              console.log('🔄 Re-rendering view:', currentHash);
               
-              // Método 1: Usar registro directo de vistas
+              // Method 1: Use direct view registry
               if (window.__HMR_VIEWS__ && window.__HMR_VIEWS__[currentHash]) {
                 try {
                   window.__HMR_VIEWS__[currentHash]();
-                  console.log('✅ Vista re-renderizada via __HMR_VIEWS__');
+                  console.log('✅ View re-rendered via __HMR_VIEWS__');
                   return;
                 } catch (error) {
-                  console.warn('⚠️ Error en __HMR_VIEWS__:', error);
+                  console.warn('⚠️ Error in __HMR_VIEWS__:', error);
                 }
               }
               
-              // Método 2: Usar routes como fallback
+              // Method 2: Use routes as fallback
               if (window.routes && window.routes[currentHash]) {
                 try {
                   window.routes[currentHash]();
-                  console.log('✅ Vista re-renderizada via routes');
+                  console.log('✅ View re-rendered via routes');
                 } catch (error) {
-                  console.error('❌ Error al re-renderizar vista:', error);
+                  console.error('❌ Error re-rendering view:', error);
                 }
               }
-            }, 100); // Delay más largo para asegurar carga completa
+            }, 100); // Longer delay to ensure complete loading
           }
         }, 0);
       };
       
-      // Manejar errores
+      // Handle errors
       script.onerror = function(error) {
-        console.error('❌ Error al recargar módulo:', moduleId, error);
+        console.error('❌ Error reloading module:', moduleId, error);
       };
       
       document.head.appendChild(script);
     } catch (error) {
-      console.error('❌ Error en executeModule:', error);
+      console.error('❌ Error in executeModule:', error);
     }
   }
   
-  // Inicializar conexión
+  // Initialize connection
   connect();
 })();
   `;
 }
 
-// Iniciar servidor
+// Start server
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor HMR ejecutándose en http://localhost:${PORT}`);
-  console.log('📁 Monitoreando cambios en archivos...');
+  console.log(`🚀 HMR server running at http://localhost:${PORT}`);
+  console.log('📁 Monitoring file changes...');
 });
 
-// Manejo de cierre
+// Handle shutdown
 process.on('SIGTERM', () => {
-  console.log('Cerrando servidor...');
+  console.log('Shutting down server...');
   watcher.close();
   wss.close();
   server.close();

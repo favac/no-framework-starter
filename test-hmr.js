@@ -1,17 +1,17 @@
-// Script de prueba para verificar HMR
-// Este archivo demuestra cómo funciona el sistema
+// Test script to verify HMR
+// This file demonstrates how the system works
 
-console.log('🧪 Sistema HMR verificado correctamente');
+console.log('🧪 HMR system verified correctly');
 
-// Crear un store de prueba
+// Create a test store
 import { createPersistentStore } from './js/hmr-store.js';
 
 const testStore = createPersistentStore('test', {
-  message: 'HMR está funcionando!',
+  message: 'HMR is working!',
   timestamp: new Date().toLocaleTimeString()
 });
 
-// Exportar para uso global
+// Export for global use
 window.testHMR = {
   store: testStore,
   updateMessage: (newMessage) => {
@@ -23,4 +23,4 @@ window.testHMR = {
   }
 };
 
-console.log('✅ Store de prueba creado:', testStore.get());
+console.log('✅ Test store created:', testStore.get());

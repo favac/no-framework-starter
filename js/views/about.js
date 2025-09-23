@@ -1,15 +1,15 @@
 import { h, mount } from "../lib/h.js";
 import { createPersistentStore } from "../hmr-store.js";
 
-// Store para la página about
+// Store for the about page
 const aboutStore = createPersistentStore('about', {
   featureIndex: 0,
   features: [
     "Hot Module Replacement (HMR)",
-    "Estado persistente",
-    "Actualización en tiempo real",
-    "Sin refresh de página",
-    "Compatible con h()"
+    "Persistent state",
+    "Real-time updates",
+    "No page refresh",
+    "Compatible with h()"
   ]
 });
 
@@ -22,9 +22,9 @@ export function renderAbout() {
     
     h("div", { class: "card hmr-demo" }, [
       h("h2", {}, "🚀 Hot Module Replacement"),
-      h("p", {}, "¡Ahora con HMR integrado! Tus cambios se aplican sin perder estado:"),
+      h("p", {}, "Now with integrated HMR! Your changes are applied without losing state:"),
       h("div", { class: "feature-showcase" }, [
-        h("h3", {}, `Característica actual: ${currentFeature}`),
+        h("h3", {}, `Current feature: ${currentFeature}`),
         h("div", { class: "button-group" }, [
           h("button", {
             class: "btn btn-primary",
@@ -32,13 +32,13 @@ export function renderAbout() {
               const nextIndex = (state.featureIndex + 1) % state.features.length;
               aboutStore.set(s => ({ ...s, featureIndex: nextIndex }));
             }
-          }, "Siguiente característica"),
+          }, "Next feature"),
           h("button", {
             class: "btn btn-secondary",
             onclick: () => {
               aboutStore.set(s => ({ ...s, featureIndex: 0 }));
             }
-          }, "Resetear")
+          }, "Reset")
         ])
       ])
     ]),
@@ -66,19 +66,19 @@ export function renderAbout() {
         h("li", {}, "Arrow functions"),
         h("li", {}, "Destructuring"),
         h("li", {}, "Modern DOM APIs"),
-        h("li", {}, "WebSocket para HMR"),
-        h("li", {}, "Chokidar para file watching")
+        h("li", {}, "WebSocket for HMR"),
+        h("li", {}, "Chokidar for file watching")
       ])
     ]),
     
     h("div", { class: "card" }, [
-      h("h2", {}, "🧪 Prueba HMR"),
+      h("h2", {}, "🧪 Test HMR"),
       h("p", {}, [
-        "Edita este archivo (js/views/about.js) mientras navegas. " +
-        "Verás los cambios sin perder el estado del contador de características."
+        "Edit this file (js/views/about.js) while browsing. " +
+        "You'll see the changes without losing the feature counter state."
       ]),
       h("p", { class: "info" }, [
-        "💡 Tip: Abre la consola del navegador para ver los logs de HMR"
+        "💡 Tip: Open the browser console to see HMR logs"
       ])
     ])
   ]);

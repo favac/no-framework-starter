@@ -1,7 +1,7 @@
 import { h, mount } from "../lib/h.js";
 import { createPersistentStore } from "../hmr-store.js";
 
-// Store local para este componente
+// Local store for this component
 const homeStore = createPersistentStore("home", {
   count: 0,
   message: "Hello from HMR-enabled app!",
@@ -11,16 +11,16 @@ export function renderHome() {
   const state = homeStore.get();
 
   const content = h("div", { class: "page-content" }, [
-    h("h1", {}, "!!!🚀 Welcome to Your App (HMR Enabled)!"),
+    h("h1", {}, "🚀 Welcome to Your App (HMR Enabled)"),
     h(
       "p",
       {},
-      "Este es un ejemplo con HMR - los cambios se aplican sin perder estado."
+      "This is an example with HMR - changes are applied without losing state."
     ),
 
     h("div", { class: "card" }, [
-      h("h2", {}, `Contador: ${state.count}`),
-      h("p", {}, `Mensaje: ${state.message}`),
+      h("h2", {}, `Counter: ${state.count}`),
+      h("p", {}, `Message: ${state.message}`),
       h("div", { class: "button-group" }, [
         h(
           "button",
@@ -28,7 +28,7 @@ export function renderHome() {
             class: "btn btn-primary",
             onclick: () => homeStore.set((s) => ({ ...s, count: s.count + 1 })),
           },
-          "Incrementar"
+          "Increment"
         ),
         h(
           "button",
@@ -36,7 +36,7 @@ export function renderHome() {
             class: "btn btn-secondary",
             onclick: () => homeStore.set((s) => ({ ...s, count: s.count - 1 })),
           },
-          "Decrementar"
+          "Decrement"
         ),
         h(
           "button",
@@ -45,26 +45,26 @@ export function renderHome() {
             onclick: () =>
               homeStore.set((s) => ({
                 ...s,
-                message: "¡Estado preservado con HMR!",
+                message: "State preserved with HMR!",
               })),
           },
-          "Cambiar Mensaje"
+          "Change Message"
         ),
       ]),
     ]),
 
     h("div", { class: "card" }, [
-      h("h3", {}, "Características de HMR"),
+      h("h3", {}, "HMR Features"),
       h("ul", {}, [
-        h("li", {}, "✅ Estado preservado al recargar"),
-        h("li", {}, "✅ CSS actualizado al instante"),
-        h("li", {}, "✅ JavaScript recargado sin refresh"),
-        h("li", {}, "✅ Stores persistentes"),
+        h("li", {}, "✅ State preserved on reload"),
+        h("li", {}, "✅ CSS updated instantly"),
+        h("li", {}, "✅ JavaScript reloaded without refresh"),
+        h("li", {}, "✅ Persistent stores"),
       ]),
     ]),
 
     h("p", { class: "info" }, [
-      "Prueba a editar este archivo y verás los cambios sin perder el estado del contador.",
+      "Try editing this file and you'll see the changes without losing the counter state.",
     ]),
   ]);
 
