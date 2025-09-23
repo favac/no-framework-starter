@@ -1,0 +1,24 @@
+{
+  "name": "no-framework-starter",
+  "version": "1.0.0",
+  "description": "A lightweight, vanilla JavaScript framework starter template",
+  "main": "js/app.js",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx serve .",
+    "dev": "npx live-server ."
+  },
+  "keywords": [
+    "javascript",
+    "vanilla",
+    "framework",
+    "spa",
+    "no-build",
+    "lightweight"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
