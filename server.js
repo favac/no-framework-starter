@@ -319,11 +319,19 @@ function getHMRClientCode() {
                 }
               }
               
-              // Method 2: Use routes as fallback
+              // Method 2: Use routes as fallback (now async)
               if (window.routes && window.routes[currentHash]) {
                 try {
-                  window.routes[currentHash]();
-                  console.log('✅ View re-rendered via routes');
+                  // Clear module cache for dynamic imports
+                  if (window.moduleCache) {
+                    window.moduleCache.delete(currentHash);
+                  }
+                  // Execute async route
+                  window.routes[currentHash]().then(() => {
+                    console.log('✅ View re-rendered via async routes');
+                  }).catch(error => {
+                    console.error('❌ Error re-rendering async view:', error);
+                  });
                 } catch (error) {
                   console.error('❌ Error re-rendering view:', error);
                 }

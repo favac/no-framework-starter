@@ -1,17 +1,40 @@
 // Main application module - Compatible with HMR
-import { initRouter } from "./router.js";
-import { renderHome } from "./views/home.js";
-import { renderAbout } from "./views/about.js";
+import { initRouter, load, createRoutes } from "./router.js";
 import { closeModal, showModal } from "./utils/modal.js";
 import { createPersistentStore } from "./hmr-store.js";
 import { showHMRIndicator } from "./hmr-ui.js";
 
-// Initialize the router with routes
+// Cache for loaded modules to avoid re-importing
+const moduleCache = new Map();
+
+// Make module cache available globally for HMR
+window.moduleCache = moduleCache;
+
+// Dynamic route definitions with lazy loading - super clean!
+// Option 1: Using the simple load() helper
 const routes = {
-  home: renderHome,
-  about: renderAbout,
-  "": renderHome, // Default route
+  home: load('home'),
+  about: load('about'),
+  "": load('home'), // Default route
 };
+
+// Option 2: Even more declarative with createRoutes()
+// const routes = createRoutes({
+//   home: 'home',        // route name -> view name
+//   about: 'about',
+//   "": 'home'           // default route
+// });
+
+// Option 3: Advanced configuration (for complex cases)
+// const routes = createRoutes({
+//   home: { view: 'home' },
+//   about: { view: 'about' },
+//   profile: { 
+//     view: 'userProfile', 
+//     path: './views/user/profile.js',
+//     function: 'renderUserProfile'
+//   }
+// });
 
 // Make routes available globally for HMR
 window.routes = routes;
@@ -46,14 +69,23 @@ function initApp() {
     });
   }
 
-  // Navigation button click handlers
+  // Navigation button click handlers with async support
   document.querySelectorAll(".nav-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const view = btn.dataset.view;
       window.history.pushState({}, "", `#${view}`);
       appStore.set(state => ({ ...state, currentView: view }));
-      routes[view]();
-      updateActiveNav(btn);
+      
+      try {
+        // Show loading state
+        showLoadingState();
+        await routes[view]();
+        updateActiveNav(btn);
+        hideLoadingState();
+      } catch (error) {
+        console.error(`Error loading view "${view}":`, error);
+        hideLoadingState();
+      }
     });
   });
   
@@ -64,6 +96,21 @@ function initApp() {
   
   // Show HMR indicator
   showHMRIndicator();
+}
+
+// Loading state management
+function showLoadingState() {
+  const loadingEl = document.getElementById('loading');
+  if (loadingEl) {
+    loadingEl.style.display = 'block';
+  }
+}
+
+function hideLoadingState() {
+  const loadingEl = document.getElementById('loading');
+  if (loadingEl) {
+    loadingEl.style.display = 'none';
+  }
 }
 
 // Update active navigation button
