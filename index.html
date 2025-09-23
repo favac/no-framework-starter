@@ -1,34 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>No-Framework App</title>
-    <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
     <div class="app-container">
-        <header class="app-header">
-            <h1>No-Framework App</h1>
-            <nav class="main-nav">
-                <button class="nav-btn active" data-view="home">Home</button>
-                <button class="nav-btn" data-view="about">About</button>
-            </nav>
-        </header>
+      <header class="app-header">
+        <h1>No-Framework App</h1>
+        <nav class="main-nav">
+          <button class="nav-btn active" data-view="home">Home</button>
+          <button class="nav-btn" data-view="about">About</button>
+        </nav>
+      </header>
 
-        <main id="main-content">
-            <!-- Content will be loaded dynamically here -->
-            <div id="loading">Loading...</div>
-        </main>
+      <main id="main-content">
+        <!-- Content will be loaded dynamically here -->
+        <div id="loading">Loading...</div>
+      </main>
 
-        <div id="modal" class="modal">
-            <div class="modal-content">
-                <span class="close-btn">&times;</span>
-                <div id="modal-body"></div>
-            </div>
+      <div id="modal" class="modal">
+        <div class="modal-content">
+          <span class="close-btn">&times;</span>
+          <div id="modal-body"></div>
         </div>
+      </div>
     </div>
 
     <script src="js/app.js" type="module"></script>
-</body>
+  </body>
 </html>
