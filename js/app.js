@@ -15,6 +15,7 @@ window.moduleCache = moduleCache;
 const routes = {
   home: load('home'),
   about: load('about'),
+  tasks: load('tasks'),
   "": load('home'), // Default route
 };
 
