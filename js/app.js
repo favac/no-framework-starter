@@ -1,14 +1,7 @@
-// Main application module - Compatible with HMR
-import { initRouter, load, createRoutes } from "./router.js";
+// Main application module
+import { initRouter, load } from "./router.js";
 import { closeModal, showModal } from "./utils/modal.js";
-import { createPersistentStore } from "./hmr-store.js";
-import { showHMRIndicator } from "./hmr-ui.js";
-
-// Cache for loaded modules to avoid re-importing
-const moduleCache = new Map();
-
-// Make module cache available globally for HMR
-window.moduleCache = moduleCache;
+import { createStore } from "./lib/h.js";
 
 // Dynamic route definitions with lazy loading - super clean!
 // Option 1: Using the simple load() helper
@@ -20,6 +13,7 @@ const routes = {
 };
 
 // Option 2: Even more declarative with createRoutes()
+// import { createRoutes } from "./router.js";
 // const routes = createRoutes({
 //   home: 'home',        // route name -> view name
 //   about: 'about',
@@ -37,11 +31,8 @@ const routes = {
 //   }
 // });
 
-// Make routes available globally for HMR
-window.routes = routes;
-
 // Global application store
-export const appStore = createPersistentStore('app', {
+export const appStore = createStore({
   currentView: 'home',
   modalOpen: false,
   count: 0
@@ -78,14 +69,10 @@ function initApp() {
       appStore.set(state => ({ ...state, currentView: view }));
       
       try {
-        // Show loading state
-        showLoadingState();
         await routes[view]();
         updateActiveNav(btn);
-        hideLoadingState();
       } catch (error) {
         console.error(`Error loading view "${view}":`, error);
-        hideLoadingState();
       }
     });
   });
@@ -94,9 +81,6 @@ function initApp() {
   appStore.subscribe(state => {
     console.log('📊 State updated:', state);
   });
-  
-  // Show HMR indicator
-  showHMRIndicator();
 }
 
 // Loading state management
@@ -131,3 +115,9 @@ if (document.readyState === "loading") {
 // Export for use in other modules
 window.showModal = showModal;
 window.closeModal = closeModal;
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    appStore.subscribe(() => {});
+  });
+}

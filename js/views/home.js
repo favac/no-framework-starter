@@ -1,11 +1,10 @@
-import { h, mount } from "../lib/h.js";
-import { createPersistentStore } from "../hmr-store.js";
+import { h, mount, createStore } from "../lib/h.js";
 import { showModal, closeModal } from "../utils/modal.js";
 
 // Local store for this component
-const homeStore = createPersistentStore("home", {
+const homeStore = createStore({
   count: 0,
-  message: "Hello from HMR-enabled app!",
+  message: "Hello from the Vite-powered app!",
 });
 
 /**
@@ -44,59 +43,68 @@ function createModalExampleContent() {
   ]);
 }
 
+function renderCounterCard(state) {
+  console.log("renderCounterCard", state);
+  return h("div", { class: "card", id: "home-counter-card" }, [
+    h("h2", {}, ["Counter: ", h.link(homeStore, "count")]),
+    h("p", {}, ["Message: ", h.link(homeStore, "message")]),
+    h("div", { class: "button-group" }, [
+      h(
+        "button",
+        {
+          class: "btn btn-primary",
+          onclick: () =>
+            homeStore.set(
+              (s) => ({ ...s, count: s.count + 1 }),
+              renderCounterCard
+            ),
+        },
+        "Increment"
+      ),
+      h(
+        "button",
+        {
+          class: "btn btn-secondary",
+          onclick: () => homeStore.set((s) => ({ ...s, count: s.count - 1 })),
+        },
+        "Decrement"
+      ),
+      h(
+        "button",
+        {
+          class: "btn btn-accent",
+          onclick: () =>
+            homeStore.set((s) => ({
+              ...s,
+              message: "State preserved with Vite HMR!",
+            })),
+        },
+        "Change Message"
+      ),
+    ]),
+  ]);
+}
+
 export function renderHome() {
   const state = homeStore.get();
 
   const content = h("div", { class: "page-content" }, [
-    h("h1", {}, "🚀 Welcome to Your App (HMR Enabled)"),
+    h("h1", {}, "🚀 Welcome to Your Vite-Powered App"),
     h(
       "p",
       {},
-      "This is an example with HMR - changes are applied without losing state."
+      "This example uses Vite's dev server so code changes appear instantly without losing state."
     ),
 
-    h("div", { class: "card" }, [
-      h("h2", {}, `Counter: ${state.count}`),
-      h("p", {}, `Message: ${state.message}`),
-      h("div", { class: "button-group" }, [
-        h(
-          "button",
-          {
-            class: "btn btn-primary",
-            onclick: () => homeStore.set((s) => ({ ...s, count: s.count + 1 })),
-          },
-          "Increment"
-        ),
-        h(
-          "button",
-          {
-            class: "btn btn-secondary",
-            onclick: () => homeStore.set((s) => ({ ...s, count: s.count - 1 })),
-          },
-          "Decrement"
-        ),
-        h(
-          "button",
-          {
-            class: "btn btn-accent",
-            onclick: () =>
-              homeStore.set((s) => ({
-                ...s,
-                message: "State preserved with HMR!",
-              })),
-          },
-          "Change Message"
-        ),
-      ]),
-    ]),
+    renderCounterCard(state),
 
     h("div", { class: "card" }, [
-      h("h3", {}, "HMR Features"),
+      h("h3", {}, "Dev Experience Highlights"),
       h("ul", {}, [
-        h("li", {}, "✅ State preserved on reload"),
-        h("li", {}, "✅ CSS updated instantly"),
+        h("li", {}, "✅ Fast hot updates with Vite"),
+        h("li", {}, "✅ CSS changes applied instantly"),
         h("li", {}, "✅ JavaScript reloaded without refresh"),
-        h("li", {}, "✅ Persistent stores"),
+        h("li", {}, "✅ Lightweight state store"),
       ]),
     ]),
 
@@ -121,10 +129,25 @@ export function renderHome() {
     ]),
 
     h("p", { class: "info" }, [
-      "Try editing this file and you'll see the changes without losing the counter state.",
+      "Try editing this file and Vite will refresh the view without losing the counter state.",
     ]),
   ]);
 
   mount(document.getElementById("main-content"), content);
+  // renderCounterSection();
 }
 
+// function isHomeRouteActive() {
+//   const hash = window.location.hash.replace("#", "");
+//   return hash === "" || hash === "home";
+// }
+
+// function renderCounterSection() {
+//   // if (!isHomeRouteActive()) return;
+//   const counterRoot = document.getElementById("home-counter-card");
+//   if (!counterRoot) return;
+//   const nextCard = renderCounterCard(homeStore.get());
+//   counterRoot.replaceWith(nextCard);
+// }
+
+// homeStore.subscribe(renderCounterSection);

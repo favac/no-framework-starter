@@ -19,6 +19,15 @@
  */
 
 /**
+ * @typedef {Object} LinkOptions
+ * @property {(value: unknown, state: Record<string, unknown>) => string} [format]
+ * Formatter applied before writing the value to the DOM.
+ */
+
+const LINK_DESCRIPTOR_SYMBOL = Symbol("h.link.descriptor");
+let autoComponentIdCounter = 0;
+
+/**
  * Creates a DOM element with attributes, styles, dataset, refs, event listeners, and children.
  * The returned element is augmented with delegation helpers: `on`,
  * `click(selector, handler)`, `input`, `change`, `submit`, `keydown`, and `keyup`.
@@ -65,6 +74,13 @@ export function h(tag, props = {}, ...children) {
     if (child == null || child === false) return;
     if (Array.isArray(child)) {
       child.forEach(append);
+    } else if (isLinkDescriptor(child)) {
+      const descriptor = child;
+      const componentId = ensureElementId(el);
+      const textNode = document.createTextNode("");
+      const binding = createLinkBinding(descriptor, textNode, componentId);
+      descriptor.store.__registerBinding(descriptor.key, binding);
+      el.appendChild(textNode);
     } else if (child instanceof Node) {
       el.appendChild(child);
     } else {
@@ -96,6 +112,122 @@ export function h(tag, props = {}, ...children) {
 
   return el;
 }
+
+/**
+ * Determines whether the provided value is a link descriptor produced by `h.link`.
+ *
+ * @param {unknown} value - Candidate value to inspect.
+ * @returns {value is { __type: symbol }} True when the value represents a link descriptor.
+ */
+function isLinkDescriptor(value) {
+  return Boolean(
+    value && typeof value === "object" && value.__type === LINK_DESCRIPTOR_SYMBOL
+  );
+}
+
+/**
+ * Formats the value that will be written to the DOM for a linked binding.
+ *
+ * @param {unknown} value - Current store value for the bound key.
+ * @param {Record<string, unknown>} state - Complete store state.
+ * @param {(value: unknown, state: Record<string, unknown>) => string | number | boolean | null | undefined} [formatter]
+ * Optional formatter provided via {@link LinkOptions}.
+ * @returns {string} String representation for the DOM text node.
+ */
+function formatLinkedValue(value, state, formatter) {
+  if (typeof formatter === "function") {
+    const formatted = formatter(value, state);
+    if (formatted == null) return "";
+    return String(formatted);
+  }
+  if (value == null) return "";
+  return String(value);
+}
+
+/**
+ * Ensures the provided element has an `id` attribute, generating one when missing.
+ *
+ * @param {HTMLElement} element - Element that should expose an identifier for bindings.
+ * @returns {string} The existing or generated identifier.
+ */
+function ensureElementId(element) {
+  if (element.id) return element.id;
+  autoComponentIdCounter += 1;
+  const generatedId = `h-component-${autoComponentIdCounter}`;
+  element.id = generatedId;
+  return generatedId;
+}
+
+/**
+ * Creates a binding record used to keep a text node in sync with the store.
+ *
+ * @param {{ store: { __unregisterBinding: (key: string, binding: LinkBindingRecord) => void }, key: string, formatter?: (value: unknown, state: Record<string, unknown>) => string | number | boolean | null | undefined }} descriptor
+ * Descriptor produced by {@link link}.
+ * @param {Text} node - Text node that will receive updates.
+ * @param {string} componentId - Identifier of the host element for housekeeping purposes.
+ * @returns {LinkBindingRecord} Binding record ready to be registered in the store.
+ */
+function createLinkBinding(descriptor, node, componentId) {
+  return {
+    node,
+    formatter: descriptor.formatter,
+    store: descriptor.store,
+    key: descriptor.key,
+    componentId,
+    wasConnected: false,
+    update(value, state) {
+      if (this.node.isConnected) {
+        this.wasConnected = true;
+        this.node.textContent = formatLinkedValue(value, state, this.formatter);
+        return;
+      }
+      if (this.wasConnected) {
+        this.store.__unregisterBinding(this.key, this);
+        return;
+      }
+      this.node.textContent = formatLinkedValue(value, state, this.formatter);
+    },
+  };
+}
+
+/**
+ * @typedef {Object} LinkBindingRecord
+ * @property {Text} node - Target text node receiving updates.
+ * @property {(value: unknown, state: Record<string, unknown>) => string | number | boolean | null | undefined} [formatter]
+ * @property {{ __unregisterBinding: (key: string, binding: LinkBindingRecord) => void }} store - Bound store instance.
+ * @property {string} key - Property name within the store state.
+ * @property {string} componentId - Identifier for the host element.
+ * @property {boolean} wasConnected - Indicates whether the node was ever connected to the document.
+ * @property {(value: unknown, state: Record<string, unknown>) => void} update - Callback invoked on store updates.
+ */
+
+/**
+ * Creates a link descriptor used by the `h()` helper to bind a store property to a text node.
+ *
+ * @template {Record<string, unknown>} S
+ * @param {{ __registerBinding: (key: string, binding: LinkBindingRecord) => () => boolean, __unregisterBinding: (key: string, binding: LinkBindingRecord) => boolean, get: () => S }} store
+ * Store instance produced by {@link createStore}.
+ * @param {keyof S & string} key - Name of the property to bind.
+ * @param {LinkOptions} [options] - Optional configuration.
+ * @returns {{ __type: symbol, store: typeof store, key: keyof S & string, formatter?: LinkOptions['format'] }} Link descriptor consumed internally by `h()`.
+ */
+export function link(store, key, options = {}) {
+  if (!store || typeof store.__registerBinding !== "function") {
+    throw new Error("h.link requires a store created by createStore.");
+  }
+  if (typeof key !== "string" || key.length === 0) {
+    throw new Error("h.link requires a non-empty property name.");
+  }
+  const formatter = typeof options.format === "function" ? options.format : undefined;
+  return {
+    __type: LINK_DESCRIPTOR_SYMBOL,
+    store,
+    key,
+    formatter,
+  };
+}
+
+h.link = link;
 
 /**
  * Creates a `DocumentFragment` and appends the provided children.
@@ -182,7 +314,7 @@ export const $$ = (sel, root = document) =>
  * @param {S} initialState - Initial store state.
  * @returns {{
  *   get: () => S,
- *   set: (next: S | ((s: S) => S)) => void,
+ *   set: (next: S | ((s: S) => S), afterUpdate?: (s: S) => void) => void,
  *   update: (patch: Partial<S> | ((s: S) => Partial<S>)) => void,
  *   subscribe: (fn: (s: S) => void) => () => boolean
  * }} An object with store helpers.
@@ -190,22 +322,81 @@ export const $$ = (sel, root = document) =>
 export function createStore(initialState) {
   let state = initialState;
   const listeners = new Set();
+  const bindings = new Map();
+
+  /**
+   * Registers a binding record for the specified key and performs the initial sync.
+   *
+   * @param {string} key - Property name in the store state.
+   * @param {LinkBindingRecord} binding - Binding configuration.
+   * @returns {() => boolean} Cleanup function removing the binding.
+   */
+  function registerBinding(key, binding) {
+    if (!bindings.has(key)) bindings.set(key, new Set());
+    const bindingSet = bindings.get(key);
+    bindingSet.add(binding);
+    binding.update(state[key], state);
+    return () => unregisterBinding(key, binding);
+  }
+
+  /**
+   * Removes a binding from the registry.
+   *
+   * @param {string} key - Bound property name.
+   * @param {LinkBindingRecord} binding - Binding record to remove.
+   * @returns {boolean} True when the record was removed.
+   */
+  function unregisterBinding(key, binding) {
+    const bindingSet = bindings.get(key);
+    if (!bindingSet) return false;
+    const removed = bindingSet.delete(binding);
+    if (bindingSet.size === 0) bindings.delete(key);
+    return removed;
+  }
+
+  /**
+   * Notifies bindings when their respective values have changed.
+   *
+   * @param {Record<string, unknown>} previous - Previous state snapshot.
+   * @param {Record<string, unknown>} next - Next state snapshot.
+   * @returns {void}
+   */
+  function notifyBindings(previous, next) {
+    if (bindings.size === 0) return;
+    bindings.forEach((bindingSet, key) => {
+      if (!Object.prototype.hasOwnProperty.call(next, key)) return;
+      const prevValue = previous ? previous[key] : undefined;
+      const nextValue = next[key];
+      if (prevValue === nextValue) return;
+      bindingSet.forEach((binding) => {
+        binding.update(nextValue, next);
+      });
+    });
+  }
+
   return {
     get: () => state,
-    set: (next) => {
+    set: (next, afterUpdate) => {
       const value = typeof next === "function" ? next(state) : next;
       if (value === state) return;
+      const previous = state;
       state = value;
+      notifyBindings(previous, state);
       listeners.forEach((l) => l(state));
+      if (typeof afterUpdate === "function") afterUpdate(state);
     },
     update: (patch) => {
       const value = typeof patch === "function" ? patch(state) : patch;
+      const previous = state;
       state = { ...state, ...value };
+      notifyBindings(previous, state);
       listeners.forEach((l) => l(state));
     },
     subscribe: (fn) => {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
+    __registerBinding: registerBinding,
+    __unregisterBinding: unregisterBinding,
   };
 }

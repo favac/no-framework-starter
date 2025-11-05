@@ -1,11 +1,10 @@
-import { h, mount } from "../lib/h.js";
-import { createPersistentStore } from "../hmr-store.js";
+import { h, mount, createStore } from "../lib/h.js";
 
 // Store for the about page
-const aboutStore = createPersistentStore("about", {
+const aboutStore = createStore({
   featureIndex: 0,
   features: [
-    "Hot Module Replacement (HMR)",
+    "Vite-powered dev server",
     "Persistent state",
     "Real-time updates",
     "No page refresh",
@@ -18,17 +17,26 @@ export function renderAbout() {
   const currentFeature = state.features[state.featureIndex];
 
   const content = h("div", { class: "page-content" }, [
-    h("h1", {}, "About This Framework + HMR"),
+    h("h1", {}, "About This Vite-Powered Framework"),
 
-    h("div", { class: "card hmr-demo" }, [
-      h("h2", {}, "🚀 Hot Module Replacement"),
+    h("div", { class: "card" }, [
+      h("h2", {}, "🚀 Modern Dev Experience"),
       h(
         "p",
         {},
-        "Now with integrated HMR! Your changes are applied without losing state:"
+        "Vite keeps updates instant so you can iterate without losing state:"
       ),
       h("div", { class: "feature-showcase" }, [
-        h("h3", {}, `Current feature: ${currentFeature}`),
+        h("h3", {}, [
+          "Current feature: ",
+          h.link(aboutStore, "features", {
+            format(value, fullState) {
+              const features = Array.isArray(value) ? value : [];
+              const index = fullState.featureIndex ?? 0;
+              return features[index] ?? "";
+            },
+          }),
+        ]),
         h("div", { class: "button-group" }, [
           h(
             "button",
@@ -69,8 +77,7 @@ export function renderAbout() {
         h("li", {}, "Event delegation helpers"),
         h("li", {}, "Lightweight state management"),
         h("li", {}, "Modal utilities"),
-        h("li", {}, "No build step required"),
-        h("li", {}, "✨ Hot Module Replacement (NEW!)"),
+        h("li", {}, "Vite-powered development workflow"),
       ]),
     ]),
 
@@ -83,19 +90,18 @@ export function renderAbout() {
         h("li", {}, "Arrow functions"),
         h("li", {}, "Destructuring"),
         h("li", {}, "Modern DOM APIs"),
-        h("li", {}, "WebSocket for HMR"),
-        h("li", {}, "Chokidar for file watching"),
+        h("li", {}, "Vite for hot module replacement"),
       ]),
     ]),
 
     h("div", { class: "card" }, [
-      h("h2", {}, "🧪 Test HMR"),
+      h("h2", {}, "🧪 Try Live Reload"),
       h("p", {}, [
         "Edit this file (js/views/about.js) while browsing. " +
-          "You'll see the changes without losing the feature counter state.",
+          "Vite will apply the changes without losing the feature counter state.",
       ]),
       h("p", { class: "info" }, [
-        "💡 Tip: Open the browser console to see HMR logs",
+        "💡 Tip: Open the browser console to see Vite's hot update logs",
       ]),
     ]),
   ]);

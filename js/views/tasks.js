@@ -1,9 +1,8 @@
-import { h, mount } from "../lib/h.js";
-import { createPersistentStore } from "../hmr-store.js";
+import { h, mount, createStore } from "../lib/h.js";
 import { Card, SimpleCard } from "../components/Card.js";
 
 // Local store for tasks
-const tasksStore = createPersistentStore("tasks", {
+const tasksStore = createStore({
   tasks: [
     {
       id: 1,

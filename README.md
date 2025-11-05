@@ -4,12 +4,11 @@ A lightweight, vanilla JavaScript framework for building modern web applications
 
 ## Features
 
-- 🚀 **No build step required** - Works directly in the browser
+- ⚡ **Vite-powered dev server** - Fast HMR and modern tooling out of the box
 - 📦 **Tiny footprint** - Core library is less than 5KB
 - 🎯 **Modern JavaScript** - Uses ES6 modules and modern APIs
 - 🧩 **Component-based** - Create reusable UI components with `h()`
 - 🛣️ **Client-side routing** - Simple hash-based routing
-- ⚡ **HMR dev server** - Hot Module Replacement for JS and CSS with state persistence
 - 🧠 **Lazy-loaded views/routes** - Code-splitting with async route helpers
 - 🎨 **CSS Variables** - Modern styling with custom properties
 - 📱 **Responsive** - Mobile-first design approach
@@ -25,23 +24,13 @@ A lightweight, vanilla JavaScript framework for building modern web applications
 npm install
 ```
 
-3. **Start the HMR dev server**
+3. **Start the Vite dev server**
 
 ```bash
 npm run dev
 ```
 
-Server will run at: http://localhost:3000
-
-4. (Optional) **Serve without HMR**
-
-```bash
-# Serve with Python (if you have it installed)
-python -m http.server 8000
-
-# Or with Node.js
-npx serve .
-```
+The dev server will run at: http://localhost:5173 (default Vite port).
 
 ## Project Structure
 
@@ -49,22 +38,19 @@ npx serve .
 no-framework-starter/
 ├── index.html              # Main HTML file
 ├── css/
-│   ├── styles.css         # Styles with CSS variables
-│   └── hmr-demo.css       # Styles for the HMR demo indicator
+│   └── styles.css         # Global styles with CSS variables
 ├── js/
-│   ├── app.js             # Main application entry point (sets up routes + HMR indicator)
+│   ├── app.js             # Main application entry point
 │   ├── router.js          # Client-side routing with lazy loading helpers
-│   ├── hmr-store.js       # Persistent stores for HMR
-│   ├── hmr-ui.js          # Small UI helper to show HMR indicator
 │   ├── lib/
 │   │   └── h.js           # Core framework utilities
 │   ├── views/
-│   │   ├── home.js        # Home page view (uses persistent store)
-│   │   └── about.js       # About page view (uses persistent store)
+│   │   ├── home.js        # Home page view
+│   │   ├── about.js       # About page view
+│   │   └── tasks.js       # Task management demo view
 │   └── utils/
 │       └── modal.js       # Modal utilities
-├── server.js               # Development server with WebSocket-powered HMR
-├── test-hmr.js             # Example script to verify HMR (optional)
+├── vite.config.js          # Vite configuration
 └── README.md               # This file
 ```
 
@@ -116,7 +102,7 @@ const routes = {
 //   '': 'home'
 // });
 
-// Make available globally for HMR fallback
+// Make available globally if you want to expose routes manually
 window.routes = routes;
 ```
 
@@ -155,20 +141,6 @@ store.subscribe(state => {
 store.update({ count: store.get().count + 1 });
 ```
 
-For HMR-enabled components, prefer `createPersistentStore()` from `js/hmr-store.js` which preserves state across hot updates:
-
-```javascript
-import { createPersistentStore } from './hmr-store.js';
-
-const store = createPersistentStore('counter', { count: 0 });
-
-store.subscribe(state => {
-  console.log('Count is now:', state.count);
-});
-
-store.set(s => ({ ...s, count: s.count + 1 }));
-```
-
 ### Event Delegation
 
 Efficiently handle events with delegation:
@@ -203,47 +175,6 @@ const modalContent = h('div', {}, [
 showModal(modalContent);
 ```
  
-## Hot Module Replacement (HMR)
-
-This starter includes a development server with full Hot Module Replacement for JavaScript and CSS.
-
-- JS modules are reloaded without a full page refresh.
-- CSS updates are applied instantly.
-- State persists across updates when using `createPersistentStore()` from `js/hmr-store.js`.
-
-### How to run
-
-```bash
-npm run dev
-```
-
-The server injects the HMR client into `index.html` at runtime and auto-wires view modules that export a function like `renderHome` or `renderAbout`.
-
-You’ll also see a small on-screen indicator when HMR is active. See more details and advanced usage in [HMR-README.md](HMR-README.md).
-
-### Example: persistent state with HMR
-
-```javascript
-// js/views/home.js
-import { h, mount } from '../lib/h.js';
-import { createPersistentStore } from '../hmr-store.js';
-
-const homeStore = createPersistentStore('home', { count: 0 });
-
-export function renderHome() {
-  const state = homeStore.get();
-  const content = h('div', {}, [
-    h('h2', {}, `Counter: ${state.count}`),
-    h('button', { onclick: () => homeStore.set(s => ({ ...s, count: s.count + 1 })) }, 'Increment')
-  ]);
-  mount(document.getElementById('main-content'), content);
-}
-```
-
-No extra HMR code is required in your views—the dev server auto-injects what’s needed to re-render after updates.
-
-> Tip: open the browser console to see detailed HMR logs.
-
 ## Lazy Loading (Code-Splitting)
 
 The router provides helpers to lazy-load view modules on demand:
@@ -258,13 +189,8 @@ export function load(viewName, customPath = null) {
 export function createLazyRoute(viewName, viewPath, functionName = null) {
   const renderFunction = functionName || `render${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`;
   return async () => {
-    const cache = window.moduleCache || new Map();
-    if (!cache.has(viewName)) {
-      const module = await import(viewPath);
-      cache.set(viewName, module[renderFunction]);
-      if (window.moduleCache) window.moduleCache.set(viewName, module[renderFunction]);
-    }
-    return cache.get(viewName)();
+    const module = await import(viewPath);
+    return module[renderFunction]();
   };
 }
 ```
@@ -280,7 +206,7 @@ const routes = {
   '': load('home')
 };
 
-window.routes = routes; // also used by HMR fallback
+window.routes = routes; // optional helper to inspect routes from the console
 ```
 
 ## Adding New Features
