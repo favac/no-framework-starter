@@ -44,7 +44,6 @@ function createModalExampleContent() {
 }
 
 function renderCounterCard(state) {
-  console.log("renderCounterCard", state);
   return h("div", { class: "card", id: "home-counter-card" }, [
     h("h2", {}, ["Counter: ", h.link(homeStore, "count")]),
     h("p", {}, ["Message: ", h.link(homeStore, "message")]),
