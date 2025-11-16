@@ -8,7 +8,7 @@ A lightweight, vanilla JavaScript framework for building modern web applications
 - 📦 **Tiny footprint** - Core library is less than 5KB
 - 🎯 **Modern JavaScript** - Uses ES6 modules and modern APIs
 - 🧩 **Component-based** - Create reusable UI components with `h()`
-- 🛣️ **Client-side routing** - Simple hash-based routing
+- 🛣️ **Client-side routing** - Clean URLs with History API (no `#` required)
 - 🧠 **Lazy-loaded views/routes** - Code-splitting with async route helpers
 - 🔄 **View lifecycle hooks** - `onInit`, `onMount`, `onUnmount` for proper initialization
 - 🎨 **CSS Variables** - Modern styling with custom properties
@@ -92,29 +92,35 @@ const card = h("div", { class: "card" }, [
 
 ### Routing
 
-Routes are lazy-loaded by default using helpers from `js/router.js` so you only load the code you need when you need it:
+The router uses the **History API** for clean URLs without `#`. Routes are lazy-loaded by default using helpers from `js/router.js`:
 
 ```javascript
 // js/app.js
-import { load /*, createRoutes */ } from "./router.js";
+import { load, navigateTo } from "./router.js";
 
 // Simple approach using the load() helper
 const routes = {
-  home: load("home"),
-  about: load("about"),
-  "": load("home"), // default route
+  home: load("home"), // URL: /
+  about: load("about"), // URL: /about
+  table: load("table"), // URL: /table
 };
 
-// Advanced: declarative route creation
-// const routes = createRoutes({
-//   home: 'home',
-//   about: 'about',
-//   '': 'home'
-// });
+// Navigate programmatically
+navigateTo("about"); // Changes URL to /about
+navigateTo("home"); // Changes URL to /
 
-// Make available globally if you want to expose routes manually
-window.routes = routes;
+// Or use links in your views
+h("a", { href: "/about" }, "Go to About");
 ```
+
+**Key Features:**
+
+- ✅ Clean URLs: `/about` instead of `/#about`
+- ✅ Automatic link interception for internal navigation
+- ✅ Browser back/forward support
+- ✅ SPA fallback configured in Vite
+
+See [docs/ROUTING.md](docs/ROUTING.md) for detailed documentation.
 
 ### Creating Views
 

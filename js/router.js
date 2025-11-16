@@ -16,24 +16,30 @@
  */
 export function createLazyRoute(viewName, viewPath, functionName = null) {
   // If no function name provided, derive it from viewName (e.g., 'home' -> 'renderHome')
-  const renderFunction = functionName || `render${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`;
-  
+  const renderFunction =
+    functionName ||
+    `render${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`;
+
   return async () => {
     // Ensure we work with a Map instance for caching
-    const cache = window.moduleCache instanceof Map
-      ? window.moduleCache
-      : (window.moduleCache = new Map());
-    
+    const cache =
+      window.moduleCache instanceof Map
+        ? window.moduleCache
+        : (window.moduleCache = new Map());
+
     if (!cache.has(viewName)) {
       try {
         const module = await import(viewPath);
         cache.set(viewName, module[renderFunction]);
       } catch (error) {
-        console.error(`Error loading view "${viewName}" from "${viewPath}":`, error);
+        console.error(
+          `Error loading view "${viewName}" from "${viewPath}":`,
+          error
+        );
         throw error;
       }
     }
-    
+
     return cache.get(viewName)();
   };
 }
@@ -67,43 +73,68 @@ export function load(viewName, customPath = null) {
  */
 export function createRoutes(routeDefinitions) {
   const routes = {};
-  
+
   for (const [routeName, config] of Object.entries(routeDefinitions)) {
-    if (typeof config === 'string') {
+    if (typeof config === "string") {
       // Simple case: route name -> view name
       routes[routeName] = load(config);
     } else if (config.view) {
       // Advanced case: custom configuration
       routes[routeName] = createLazyRoute(
-        config.view, 
+        config.view,
         config.path || `./views/${config.view}.js`,
         config.function
       );
     }
   }
-  
+
   return routes;
+}
+
+/**
+ * Gets the current route from the pathname.
+ * @returns {string} Current route name.
+ */
+function getCurrentRoute() {
+  const path = window.location.pathname;
+  // Remove leading slash and use 'home' as default
+  return path === "/" ? "home" : path.slice(1);
 }
 
 // Initialize the router: loads the initial route and handles browser navigation events.
 /**
  * Initializes the router: loads the initial route and handles browser navigation events.
+ * Uses History API (pushState) instead of hash-based routing.
  *
  * @param {Record<string, () => Promise<void>>} routes - Route handlers keyed by route name.
  * @returns {void}
  */
 export function initRouter(routes) {
   // Handle initial route
-  const initialRoute = window.location.hash.replace("#", "") || "home";
+  const initialRoute = getCurrentRoute();
   if (routes[initialRoute]) {
     handleRouteAsync(routes[initialRoute], initialRoute);
   }
 
   // Handle browser back/forward
   window.addEventListener("popstate", () => {
-    const route = window.location.hash.replace("#", "") || "home";
+    const route = getCurrentRoute();
     if (routes[route]) {
       handleRouteAsync(routes[route], route);
+    }
+  });
+
+  // Intercept link clicks for client-side navigation
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest("a[href]");
+    if (!link) return;
+
+    const href = link.getAttribute("href");
+    // Only handle internal links (starting with /)
+    if (href && href.startsWith("/")) {
+      e.preventDefault();
+      const route = href === "/" ? "home" : href.slice(1);
+      navigateTo(route);
     }
   });
 }
@@ -120,13 +151,13 @@ async function handleRouteAsync(routeHandler, routeName) {
   try {
     // Show loading state
     showLoadingState();
-    
+
     // Execute route handler (could be sync or async)
     await routeHandler();
-    
+
     // Update navigation after successful load
     updateActiveNav(routeName);
-    
+
     // Hide loading state
     hideLoadingState();
   } catch (error) {
@@ -142,9 +173,9 @@ async function handleRouteAsync(routeHandler, routeName) {
  * @returns {void}
  */
 function showLoadingState() {
-  const loadingEl = document.getElementById('loading');
+  const loadingEl = document.getElementById("loading");
   if (loadingEl) {
-    loadingEl.style.display = 'block';
+    loadingEl.style.display = "block";
   }
 }
 
@@ -153,9 +184,9 @@ function showLoadingState() {
  * @returns {void}
  */
 function hideLoadingState() {
-  const loadingEl = document.getElementById('loading');
+  const loadingEl = document.getElementById("loading");
   if (loadingEl) {
-    loadingEl.style.display = 'none';
+    loadingEl.style.display = "none";
   }
 }
 
@@ -174,14 +205,15 @@ function updateActiveNav(route) {
 
 // Navigate to a specific route
 /**
- * Navigates to a route by updating the hash and dispatching a `popstate` event.
+ * Navigates to a route using the History API (pushState).
  *
  * @param {string} route - Route name to navigate to.
  * @returns {void}
  */
 export function navigateTo(route) {
-  if (window.location.hash.replace("#", "") !== route) {
-    window.history.pushState({}, "", `#${route}`);
+  const path = route === "home" ? "/" : `/${route}`;
+  if (window.location.pathname !== path) {
+    window.history.pushState({}, "", path);
     window.dispatchEvent(new Event("popstate"));
   }
 }

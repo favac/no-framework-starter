@@ -1,16 +1,16 @@
 // Main application module
-import { initRouter, load } from "./router.js";
+import { initRouter, load, navigateTo } from "./router.js";
 import { closeModal, showModal } from "./utils/modal.js";
 import { createStore } from "./lib/h.js";
 
 // Dynamic route definitions with lazy loading - super clean!
 // Option 1: Using the simple load() helper
 const routes = {
-  home: load('home'),
-  about: load('about'),
-  tasks: load('tasks'),
-  table: load('table'),
-  "": load('home'), // Default route
+  home: load("home"),
+  about: load("about"),
+  tasks: load("tasks"),
+  table: load("table"),
+  "": load("home"), // Default route
 };
 
 // Option 2: Even more declarative with createRoutes()
@@ -25,8 +25,8 @@ const routes = {
 // const routes = createRoutes({
 //   home: { view: 'home' },
 //   about: { view: 'about' },
-//   profile: { 
-//     view: 'userProfile', 
+//   profile: {
+//     view: 'userProfile',
 //     path: './views/user/profile.js',
 //     function: 'renderUserProfile'
 //   }
@@ -34,15 +34,15 @@ const routes = {
 
 // Global application store
 export const appStore = createStore({
-  currentView: 'home',
+  currentView: "home",
   modalOpen: false,
-  count: 0
+  count: 0,
 });
 
 // Initialize the application
 function initApp() {
-  console.log('🚀 Initializing application...');
-  
+  console.log("🚀 Initializing application...");
+
   // Initialize the router
   initRouter(routes);
 
@@ -62,40 +62,33 @@ function initApp() {
     });
   }
 
-  // Navigation button click handlers with async support
+  // Navigation button click handlers using History API
   document.querySelectorAll(".nav-btn").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const view = btn.dataset.view;
-      window.history.pushState({}, "", `#${view}`);
-      appStore.set(state => ({ ...state, currentView: view }));
-      
-      try {
-        await routes[view]();
-        updateActiveNav(btn);
-      } catch (error) {
-        console.error(`Error loading view "${view}":`, error);
-      }
+      navigateTo(view);
+      appStore.set((state) => ({ ...state, currentView: view }));
     });
   });
-  
+
   // Subscribe to store changes
-  appStore.subscribe(state => {
-    console.log('📊 State updated:', state);
+  appStore.subscribe((state) => {
+    console.log("📊 State updated:", state);
   });
 }
 
 // Loading state management
 function showLoadingState() {
-  const loadingEl = document.getElementById('loading');
+  const loadingEl = document.getElementById("loading");
   if (loadingEl) {
-    loadingEl.style.display = 'block';
+    loadingEl.style.display = "block";
   }
 }
 
 function hideLoadingState() {
-  const loadingEl = document.getElementById('loading');
+  const loadingEl = document.getElementById("loading");
   if (loadingEl) {
-    loadingEl.style.display = 'none';
+    loadingEl.style.display = "none";
   }
 }
 
