@@ -9,6 +9,7 @@ const routes = {
   home: load('home'),
   about: load('about'),
   tasks: load('tasks'),
+  table: load('table'),
   "": load('home'), // Default route
 };
 

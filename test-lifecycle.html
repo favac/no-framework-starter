@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lifecycle Test</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .test-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .log {
+        background: #f0f0f0;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        margin-top: 20px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .log-entry {
+        padding: 4px 0;
+        border-bottom: 1px solid #ddd;
+      }
+      .log-entry:last-child {
+        border-bottom: none;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .success {
+        color: #28a745;
+      }
+      .error {
+        color: #dc3545;
+      }
+      .info {
+        color: #17a2b8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="test-container">
+      <h1>🧪 Lifecycle System Test</h1>
+      <p>Testing the view lifecycle hooks system</p>
+
+      <div id="test-content"></div>
+
+      <div>
+        <button onclick="testBasicLifecycle()">Test Basic Lifecycle</button>
+        <button onclick="testReactiveBinding()">Test Reactive Binding</button>
+        <button onclick="testCleanup()">Test Cleanup</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+      </div>
+
+      <div class="log" id="log"></div>
+    </div>
+
+    <script type="module">
+      import { h, createStore } from "./js/lib/h.js";
+      import { createView } from "./js/lib/lifecycle.js";
+
+      window.logs = [];
+
+      function log(message, type = "info") {
+        const timestamp = new Date().toLocaleTimeString();
+        const entry = { timestamp, message, type };
+        window.logs.push(entry);
+        updateLogDisplay();
+      }
+
+      function updateLogDisplay() {
+        const logEl = document.getElementById("log");
+        logEl.innerHTML = window.logs
+          .map(
+            (entry) =>
+              `<div class="log-entry ${entry.type}">
+          [${entry.timestamp}] ${entry.message}
+        </div>`
+          )
+          .join("");
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      window.clearLogs = function () {
+        window.logs = [];
+        updateLogDisplay();
+      };
+
+      // Test 1: Basic Lifecycle
+      window.testBasicLifecycle = async function () {
+        log("🧪 Starting Basic Lifecycle Test", "info");
+
+        const testView = createView("test-basic", {
+          onInit() {
+            log("✅ onInit called", "success");
+          },
+
+          render() {
+            log("✅ render called", "success");
+            return h("div", {}, [
+              h("h2", {}, "Basic Lifecycle Test"),
+              h("p", {}, "If you see this, render() worked!"),
+            ]);
+          },
+
+          onMount() {
+            log("✅ onMount called", "success");
+          },
+        });
+
+        try {
+          await testView();
+          log("✅ Test completed successfully", "success");
+        } catch (error) {
+          log(`❌ Test failed: ${error.message}`, "error");
+        }
+      };
+
+      // Test 2: Reactive Binding
+      window.testReactiveBinding = async function () {
+        log("🧪 Starting Reactive Binding Test", "info");
+
+        const testStore = createStore({
+          items: [],
+        });
+
+        const testView = createView("test-reactive", {
+          onInit() {
+            log("✅ onInit: Initializing store", "success");
+            const items = ["Item 1", "Item 2", "Item 3"];
+            testStore.update(() => ({ items }));
+            log(`✅ Store updated with ${items.length} items`, "success");
+          },
+
+          render() {
+            log("✅ render: Creating reactive binding", "success");
+            return h("div", {}, [
+              h("h2", {}, "Reactive Binding Test"),
+              h(
+                "ul",
+                {},
+                h.map("items", (item) => h("li", {}, item), {
+                  store: testStore,
+                })
+              ),
+            ]);
+          },
+
+          onMount() {
+            log("✅ onMount: DOM ready with reactive bindings", "success");
+            const items = document.querySelectorAll("#test-content li");
+            log(`✅ Found ${items.length} rendered items in DOM`, "success");
+          },
+        });
+
+        try {
+          await testView();
+          log("✅ Test completed successfully", "success");
+        } catch (error) {
+          log(`❌ Test failed: ${error.message}`, "error");
+        }
+      };
+
+      // Test 3: Cleanup
+      window.testCleanup = async function () {
+        log("🧪 Starting Cleanup Test", "info");
+
+        let cleanupCalled = false;
+
+        const testView = createView("test-cleanup", {
+          onInit() {
+            log("✅ onInit called", "success");
+            this.intervalId = setInterval(() => {
+              log("⏱️ Interval tick", "info");
+            }, 1000);
+          },
+
+          render() {
+            return h("div", {}, [
+              h("h2", {}, "Cleanup Test"),
+              h("p", {}, "Check logs for interval ticks"),
+            ]);
+          },
+
+          onMount() {
+            log("✅ onMount: Interval started", "success");
+          },
+
+          onUnmount() {
+            log("🧹 onUnmount: Cleaning up interval", "success");
+            clearInterval(this.intervalId);
+            cleanupCalled = true;
+          },
+        });
+
+        try {
+          await testView();
+          log("✅ View mounted, interval running", "success");
+
+          // Simulate unmount after 3 seconds
+          setTimeout(async () => {
+            log("🔄 Simulating view change...", "info");
+            const newView = createView("test-new", {
+              render() {
+                return h("div", {}, "New view");
+              },
+            });
+            await newView();
+
+            if (cleanupCalled) {
+              log("✅ Cleanup test passed!", "success");
+            } else {
+              log("❌ Cleanup was not called", "error");
+            }
+          }, 3000);
+        } catch (error) {
+          log(`❌ Test failed: ${error.message}`, "error");
+        }
+      };
+
+      // Auto-run first test on load
+      log("🚀 Lifecycle Test Suite Ready", "success");
+      log("Click a button to run tests", "info");
+    </script>
+  </body>
+</html>

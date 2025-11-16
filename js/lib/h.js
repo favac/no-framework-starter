@@ -25,6 +25,7 @@
  */
 
 const LINK_DESCRIPTOR_SYMBOL = Symbol("h.link.descriptor");
+const MAP_DESCRIPTOR_SYMBOL = Symbol("h.map.descriptor");
 let autoComponentIdCounter = 0;
 
 /**
@@ -81,6 +82,14 @@ export function h(tag, props = {}, ...children) {
       const binding = createLinkBinding(descriptor, textNode, componentId);
       descriptor.store.__registerBinding(descriptor.key, binding);
       el.appendChild(textNode);
+    } else if (isMapDescriptor(child)) {
+      const descriptor = child;
+      const componentId = ensureElementId(el);
+      const { start, end } = createMapAnchors(componentId, descriptor.key);
+      el.appendChild(start);
+      el.appendChild(end);
+      const binding = createMapBinding(descriptor, start, end, componentId);
+      descriptor.store.__registerBinding(descriptor.key, binding);
     } else if (child instanceof Node) {
       el.appendChild(child);
     } else {
@@ -121,7 +130,15 @@ export function h(tag, props = {}, ...children) {
  */
 function isLinkDescriptor(value) {
   return Boolean(
-    value && typeof value === "object" && value.__type === LINK_DESCRIPTOR_SYMBOL
+    value &&
+      typeof value === "object" &&
+      value.__type === LINK_DESCRIPTOR_SYMBOL
+  );
+}
+
+function isMapDescriptor(value) {
+  return Boolean(
+    value && typeof value === "object" && value.__type === MAP_DESCRIPTOR_SYMBOL
   );
 }
 
@@ -190,11 +207,95 @@ function createLinkBinding(descriptor, node, componentId) {
   };
 }
 
+function clearNodesBetween(start, end) {
+  let current = start.nextSibling;
+  while (current && current !== end) {
+    const next = current.nextSibling;
+    current.remove();
+    current = next;
+  }
+}
+
+function renderIterableToFragment(iterable, mapper) {
+  const fragment = document.createDocumentFragment();
+  let index = 0;
+  for (const item of iterable) {
+    const result = mapper(item, index);
+    index += 1;
+    if (result == null || result === false) continue;
+    fragment.appendChild(
+      result instanceof Node ? result : document.createTextNode(String(result))
+    );
+  }
+  return fragment;
+}
+
+function isIterable(value) {
+  return value != null && typeof value[Symbol.iterator] === "function";
+}
+
+function createMapAnchors(componentId, key) {
+  return {
+    start: document.createComment(`h.map:${componentId}:${key}:start`),
+    end: document.createComment(`h.map:${componentId}:${key}:end`),
+  };
+}
+
+function createMapBinding(descriptor, start, end, componentId) {
+  const binding = {
+    start,
+    end,
+    iteratee: descriptor.iteratee,
+    store: descriptor.store,
+    key: descriptor.key,
+    componentId,
+    wasConnected: false,
+    pendingValue: null,
+    pendingState: null,
+    update(value, state) {
+      if (!this.start.isConnected || !this.end.isConnected) {
+        if (this.wasConnected) {
+          this.store.__unregisterBinding(this.key, this);
+        } else {
+          // Store pending update for when connected
+          this.pendingValue = value;
+          this.pendingState = state;
+        }
+        return;
+      }
+      this.wasConnected = true;
+      clearNodesBetween(this.start, this.end);
+      const iterable = isIterable(value) ? value : [];
+      const fragment = renderIterableToFragment(iterable, (item, index) =>
+        this.iteratee(item, index, state)
+      );
+      this.end.parentNode?.insertBefore(fragment, this.end);
+    },
+  };
+
+  // Check if connected after next microtask and apply pending update
+  Promise.resolve().then(() => {
+    if (
+      binding.pendingValue !== null &&
+      (binding.start.isConnected || binding.end.isConnected)
+    ) {
+      binding.update(binding.pendingValue, binding.pendingState);
+      binding.pendingValue = null;
+      binding.pendingState = null;
+    }
+  });
+
+  return binding;
+}
+
 /**
- * @typedef {Object} LinkBindingRecord
- * @property {Text} node - Target text node receiving updates.
+ * @typedef {Object} BindingRecord
+ * @property {Text|Comment} [node] - Optional text node receiving updates.
+ * @property {Comment} [start] - Optional start marker for ranged updates.
+ * @property {Comment} [end] - Optional end marker for ranged updates.
  * @property {(value: unknown, state: Record<string, unknown>) => string | number | boolean | null | undefined} [formatter]
- * @property {{ __unregisterBinding: (key: string, binding: LinkBindingRecord) => void }} store - Bound store instance.
+ * @property {(item: unknown, index: number, state: Record<string, unknown>) => Node | string | number | boolean | null | undefined} [iteratee]
+ * @property {{ __unregisterBinding: (key: string, binding: BindingRecord) => void }} store - Bound store instance.
  * @property {string} key - Property name within the store state.
  * @property {string} componentId - Identifier for the host element.
  * @property {boolean} wasConnected - Indicates whether the node was ever connected to the document.
@@ -218,7 +319,8 @@ export function link(store, key, options = {}) {
   if (typeof key !== "string" || key.length === 0) {
     throw new Error("h.link requires a non-empty property name.");
   }
-  const formatter = typeof options.format === "function" ? options.format : undefined;
+  const formatter =
+    typeof options.format === "function" ? options.format : undefined;
   return {
     __type: LINK_DESCRIPTOR_SYMBOL,
     store,
@@ -228,6 +330,63 @@ export function link(store, key, options = {}) {
 }
 
 h.link = link;
+
+/**
+ * Maps over an iterable source or a reactive store key to create DOM elements.
+ *
+ * When source is a string (store key), returns a descriptor for reactive mapping.
+ * When source is an iterable, immediately renders elements into a DocumentFragment.
+ *
+ * @param {string|Iterable} source - Store key (string) for reactive mapping, or an iterable to map over
+ * @param {Function} iteratee - Mapping function that receives (item, index) and returns a DOM element
+ * @param {Object} [options={}] - Configuration options
+ * @param {Object} [options.store] - Store instance (required when source is a string)
+ * @returns {Object|DocumentFragment} Map descriptor for reactive binding or DocumentFragment with rendered elements
+ * @throws {Error} If iteratee is not a function
+ * @throws {Error} If source is a string but no valid store is provided
+ *
+ * @example
+ * // Reactive mapping with store
+ * const itemsView = h.map('items', (item, index) =>
+ *   h('li', {}, item.name),
+ *   { store: myStore }
+ * );
+ *
+ * @example
+ * // Direct mapping of an array
+ * const list = h.map([1, 2, 3], (num) =>
+ *   h('li', {}, `Item ${num}`)
+ * );
+ */
+export function map(source, iteratee, options = {}) {
+  if (typeof iteratee !== "function") {
+    throw new Error(
+      "h.map requires a mapping function as the second argument."
+    );
+  }
+  if (typeof source === "string") {
+    const { store } = options;
+    if (!store || typeof store.__registerBinding !== "function") {
+      throw new Error(
+        "h.map with a string source requires a store created by createStore."
+      );
+    }
+    return {
+      __type: MAP_DESCRIPTOR_SYMBOL,
+      store,
+      key: source,
+      iteratee,
+    };
+  }
+  if (!isIterable(source)) {
+    return document.createDocumentFragment();
+  }
+  return renderIterableToFragment(source, (item, index) =>
+    iteratee(item, index)
+  );
+}
+
+h.map = map;
 
 /**
  * Creates a `DocumentFragment` and appends the provided children.

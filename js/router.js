@@ -19,18 +19,15 @@ export function createLazyRoute(viewName, viewPath, functionName = null) {
   const renderFunction = functionName || `render${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`;
   
   return async () => {
-    // Use global moduleCache if available, otherwise create local cache
-    const cache = window.moduleCache || new Map();
+    // Ensure we work with a Map instance for caching
+    const cache = window.moduleCache instanceof Map
+      ? window.moduleCache
+      : (window.moduleCache = new Map());
     
     if (!cache.has(viewName)) {
       try {
         const module = await import(viewPath);
         cache.set(viewName, module[renderFunction]);
-        
-        // Store in global cache if available
-        if (window.moduleCache) {
-          window.moduleCache.set(viewName, module[renderFunction]);
-        }
       } catch (error) {
         console.error(`Error loading view "${viewName}" from "${viewPath}":`, error);
         throw error;
